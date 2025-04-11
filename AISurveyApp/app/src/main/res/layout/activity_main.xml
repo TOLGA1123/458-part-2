@@ -1,0 +1,156 @@
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+        <!-- Name EditText -->
+        <EditText
+            android:id="@+id/etName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Name-Surname"
+            android:inputType="textPersonName" />
+
+        <!-- Birth Date EditText -->
+        <EditText
+            android:id="@+id/etBirthDate"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:clickable="true"
+            android:focusable="false"
+            android:hint="Birth Date (YYYY‑MM‑DD)" />
+
+        <!-- Education Spinner -->
+        <Spinner
+            android:id="@+id/spinnerEducation"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <!-- City EditText -->
+        <EditText
+            android:id="@+id/etCity"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="City" />
+
+        <!-- Gender RadioGroup -->
+        <RadioGroup
+            android:id="@+id/rgGender"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <RadioButton
+                android:id="@+id/rbMale"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingEnd="8dp"
+                android:text="Male" />
+
+            <RadioButton
+                android:id="@+id/rbFemale"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingEnd="8dp"
+                android:text="Female" />
+
+            <RadioButton
+                android:id="@+id/rbOther"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingEnd="8dp"
+                android:text="Other" />
+        </RadioGroup>
+
+        <!-- Text for AI Models Tried -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="AI Models Tried:" />
+
+        <!-- Checkboxes for AI Models -->
+        <CheckBox
+            android:id="@+id/cbChatGPT"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ChatGPT" />
+
+        <EditText
+            android:id="@+id/etChatGPTCons"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="ChatGPT pros/cons"
+            android:visibility="gone" />
+
+        <CheckBox
+            android:id="@+id/cbBard"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Bard" />
+        <EditText
+            android:id="@+id/etBardCons"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Bard pros/cons"
+            android:visibility="gone" />
+
+        <CheckBox
+            android:id="@+id/cbClaude"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Claude" />
+        <EditText
+            android:id="@+id/etClaudeCons"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Claude pros/cons"
+            android:visibility="gone" />
+
+        <CheckBox
+            android:id="@+id/cbCopilot"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Copilot" />
+        <EditText
+            android:id="@+id/etCopilotCons"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Copilot pros/cons"
+            android:visibility="gone" />
+
+        <!-- Use Case EditText -->
+        <EditText
+            android:id="@+id/etUseCase"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="AI use cases in daily life" />
+
+        <!-- Send Button -->
+        <Button
+            android:id="@+id/btnSend"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:enabled="false"
+            android:text="Send" />
+
+        <Button
+            android:id="@+id/btnLogout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Logout" />
+
+        <TextView
+            android:id="@+id/emailTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Email: "
+            android:textSize="18sp" />
+
+    </LinearLayout>
+
+</ScrollView>
