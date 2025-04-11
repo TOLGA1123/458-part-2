@@ -5,7 +5,7 @@ from flask_mail import Mail, Message
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 from dotenv import load_dotenv
-
+from smtplib import SMTPException
 load_dotenv()
 
 app = Flask(__name__)
@@ -135,7 +135,7 @@ def send_survey():
     )
 
     msg = Message(
-        subject="AI‑Survey Result",
+        subject="AI Survey Result",
         sender="test.hesap458@gmail.com",
         recipients=["test.hesap458@gmail.com"],
         body=body,
