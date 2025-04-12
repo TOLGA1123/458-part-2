@@ -24,7 +24,15 @@
             android:clickable="true"
             android:focusable="false"
             android:hint="Birth Date (YYYY‑MM‑DD)" />
-
+        <TextView
+            android:id="@+id/birthdateErrorMessage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Birthdate cannot be in the future."
+            android:textColor="@android:color/holo_red_dark"
+            android:visibility="gone"
+            android:textSize="14sp"
+            android:layout_marginTop="8dp"/>
         <!-- Education Spinner -->
         <Spinner
             android:id="@+id/spinnerEducation"
@@ -72,7 +80,15 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="AI Models Tried:" />
-
+        <TextView
+            android:id="@+id/aiModelErrorMessage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="You must select at least one AI model"
+            android:textColor="@android:color/holo_red_dark"
+            android:visibility="gone"
+            android:textSize="14sp"
+            android:layout_marginTop="8dp"/>
         <!-- Checkboxes for AI Models -->
         <CheckBox
             android:id="@+id/cbChatGPT"

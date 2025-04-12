@@ -120,17 +120,37 @@ class MainActivity : AppCompatActivity() {
 
         etBirthDate.setOnClickListener {
             val c = Calendar.getInstance()
+            val today = Calendar.getInstance()
+
             DatePickerDialog(
                 this,
                 { _, y, m, d ->
-                    etBirthDate.setText(String.format("%04d-%02d-%02d", y, m + 1, d))
-                    checkAllFields()
+                    val selectedDate = Calendar.getInstance().apply {
+                        set(y, m, d)
+                        set(Calendar.HOUR_OF_DAY, 0)
+                        set(Calendar.MINUTE, 0)
+                        set(Calendar.SECOND, 0)
+                        set(Calendar.MILLISECOND, 0)
+                    }
+
+                    val errorMessage: TextView = findViewById(R.id.birthdateErrorMessage)
+
+                    if (selectedDate.after(today)) {
+                        errorMessage.visibility = View.VISIBLE
+                        etBirthDate.text.clear()
+                        checkAllFields()
+                    } else {
+                        errorMessage.visibility = View.GONE
+                        etBirthDate.setText(String.format("%04d-%02d-%02d", y, m + 1, d))
+                        checkAllFields()
+                    }
                 },
                 c.get(Calendar.YEAR),
                 c.get(Calendar.MONTH),
                 c.get(Calendar.DAY_OF_MONTH)
             ).show()
         }
+
 
         btnSend.setOnClickListener { sendSurveyData() }
         btnLogout.setOnClickListener { logoutUser() }
@@ -149,7 +169,7 @@ class MainActivity : AppCompatActivity() {
     private fun sendSurveyData() {
         val selectedModels = mutableListOf<String>()
         val modelConsMap = mutableMapOf<String, String>()
-
+        val errorMessage: TextView = findViewById(R.id.aiModelErrorMessage)
         if (cbChatGPT.isChecked) {
             selectedModels.add(cbChatGPT.text.toString())
             modelConsMap["ChatGPT"] = etChatGPTCons.text.toString()
@@ -166,7 +186,14 @@ class MainActivity : AppCompatActivity() {
             selectedModels.add(cbCopilot.text.toString())
             modelConsMap["Copilot"] = etCopilotCons.text.toString()
         }
-
+        if (selectedModels.isEmpty()) {
+            errorMessage.visibility = View.VISIBLE
+            btnSend.isEnabled = false
+            return
+        } else {
+            errorMessage.visibility = View.GONE
+            btnSend.isEnabled = true
+        }
         val request = SurveyRequest(
             name = etName.text.toString(),
             birth_date = etBirthDate.text.toString(),

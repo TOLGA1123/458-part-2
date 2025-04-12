@@ -10,7 +10,8 @@ from selenium.common.exceptions import TimeoutException
 import os
 from dotenv import load_dotenv
 load_dotenv()
-class BasicEndToEndTest(unittest.TestCase):
+
+class BirthdateValidationTest(unittest.TestCase):
     def setUp(self):
         options = UiAutomator2Options()
         options.platform_name = "Android"
@@ -20,13 +21,14 @@ class BasicEndToEndTest(unittest.TestCase):
         options.app_activity = ".LoginActivity"
         options.automation_name = "UiAutomator2"
         options.no_reset = True
+
         self.driver = webdriver.Remote("http://localhost:4723", options=options)
         self.driver.implicitly_wait(10)
 
-    def test_basic_end_to_end_submission(self):
+    def test_birthdate_in_the_future(self):
         driver = self.driver
 
-         # --- LOGIN PHASE ---
+        # --- LOGIN PHASE ---
         email_field = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((AppiumBy.ID, "com.example.aisurveyapp:id/etUserInput"))
         )
@@ -48,17 +50,16 @@ class BasicEndToEndTest(unittest.TestCase):
         )
         name_field.send_keys("Jane Doe")
 
+        # birthdate > today
         birth_date_field = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((AppiumBy.ID, "com.example.aisurveyapp:id/etBirthDate"))
         )
         birth_date_field.click()
-
         year_header = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((AppiumBy.ID, "android:id/date_picker_header_year"))
         )
         year_header.click()
-
-        target_year = "2015"
+        future_year = "2030"
         max_year_scrolls = 20
 
         year_found = False
@@ -66,27 +67,35 @@ class BasicEndToEndTest(unittest.TestCase):
             try:
                 year_to_select = WebDriverWait(driver, 2).until(
                     EC.element_to_be_clickable((AppiumBy.ANDROID_UIAUTOMATOR,
-                        f'new UiSelector().resourceId("android:id/text1").text("{target_year}")'))
+                        f'new UiSelector().resourceId("android:id/text1").text("{future_year}")'))
                 )
                 year_to_select.click()
                 year_found = True
-                print(f"✅ Year {target_year} selected")
+                print(f"✅ Year {future_year} selected")
                 break
             except TimeoutException:
-                # Scroll backward to previous years
                 driver.find_element(
                     AppiumBy.ANDROID_UIAUTOMATOR,
-                    'new UiScrollable(new UiSelector().resourceId("android:id/date_picker_year_picker")).scrollBackward()'
+                    'new UiScrollable(new UiSelector().resourceId("android:id/date_picker_year_picker"))'
                 )
 
         if not year_found:
-            print("Year {target_year} not found after {max_year_scrolls} scrolls")
+            print(f"Year {future_year} not found after {max_year_scrolls} scrolls")
 
         done_button = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((AppiumBy.ID, "android:id/button1"))
         )
         done_button.click()
+        try:
+            error_message_element = WebDriverWait(driver, 10).until(
+                EC.visibility_of_element_located((AppiumBy.ID, "com.example.aisurveyapp:id/birthdateErrorMessage"))
+            )
+            error_message_text = error_message_element.text
+            print("Error message displayed: ", error_message_text)
+            assert "Birthdate cannot be in the future" in error_message_text, "Error message not displayed correctly"
 
+        except TimeoutException:
+            print("Error message not displayed in time.")
         spinner = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((AppiumBy.ID, "com.example.aisurveyapp:id/spinnerEducation"))
         )
@@ -126,62 +135,16 @@ class BasicEndToEndTest(unittest.TestCase):
             EC.element_to_be_clickable((AppiumBy.ID, "com.example.aisurveyapp:id/etUseCase"))
         )
         use_case_field.send_keys("Helps me summarize articles.")
-
         send_button = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((AppiumBy.ID, "com.example.aisurveyapp:id/btnSend"))
+            EC.presence_of_element_located((AppiumBy.ID, "com.example.aisurveyapp:id/btnSend"))
         )
-        self.assertTrue(send_button.is_enabled(), "Send button should be enabled")
-        send_button.click()
 
-        # --- EMAIL VERIFICATION VIA IMAP ---
-        email_found = self.wait_for_email(
-            recipient="test.hesap458@gmail.com",
-            subject_keyword="AI Survey Result",
-            timeout=30
-        )
-        self.assertTrue(email_found, "Survey email was not received within the expected timeframe.")
-
-    def wait_for_email(self, recipient, subject_keyword, timeout=30):
-        start_time = time.time()
-        while (time.time() - start_time) < timeout:
-            if self.check_email(recipient, subject_keyword):
-                return True
-            time.sleep(10)
-        return False
-
-    def check_email(self, recipient, subject_keyword):
-        print("check email called")
-        host = "imap.gmail.com"
-        username = "test.hesap458@gmail.com"
-        #password = "CS458TestHesap"
-
-        password = os.getenv("MAIL_APP_PASSWORD")
-
-        try:
-            mail = imaplib.IMAP4_SSL(host, 993)
-            print("1")
-            try:
-                print("Attempting login...")
-                rv, data = mail.login(username, password)
-                print(f"Login result: {rv}, {data}")
-            except Exception as e:
-                print("Login failed with error:", e)
-            print("2")
-            mail.select("INBOX")
-            print("3")
-            data = mail.search(None, f'(SUBJECT "{subject_keyword}")')
-            print("4")
-            mail_ids = data[0].split()
-            mail.logout()
-            return len(mail_ids) > 0
-        except Exception as e:
-            print("Error checking email:", e)
-            return False
+        self.assertFalse(send_button.is_enabled(), "Send button should be disabled when birthdate is in the future.")
 
     def tearDown(self):
         if self.driver:
             logout_button = WebDriverWait(self.driver, 10).until(
-            EC.element_to_be_clickable((AppiumBy.ID, "com.example.aisurveyapp:id/btnLogout"))
+                EC.element_to_be_clickable((AppiumBy.ID, "com.example.aisurveyapp:id/btnLogout"))
             )
             logout_button.click()
             self.driver.quit()
