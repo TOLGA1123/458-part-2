@@ -12,7 +12,8 @@ import email
 import os
 from dotenv import load_dotenv
 load_dotenv()
-class BasicEndToEndTest(unittest.TestCase):
+
+class MultipleSendTest(unittest.TestCase):
     def setUp(self):
         options = UiAutomator2Options()
         options.platform_name = "Android"
@@ -25,7 +26,7 @@ class BasicEndToEndTest(unittest.TestCase):
         self.driver = webdriver.Remote("http://localhost:4723", options=options)
         self.driver.implicitly_wait(10)
 
-    def test_basic_end_to_end_submission(self):
+    def test_basic_end_to_end_submission_multiple_sends(self):
         driver = self.driver
 
          # --- LOGIN PHASE ---
@@ -54,34 +55,6 @@ class BasicEndToEndTest(unittest.TestCase):
             EC.element_to_be_clickable((AppiumBy.ID, "com.example.aisurveyapp:id/etBirthDate"))
         )
         birth_date_field.click()
-
-        year_header = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((AppiumBy.ID, "android:id/date_picker_header_year"))
-        )
-        year_header.click()
-
-        target_year = "2015"
-        max_year_scrolls = 20
-
-        year_found = False
-        for _ in range(max_year_scrolls):
-            try:
-                year_to_select = WebDriverWait(driver, 2).until(
-                    EC.element_to_be_clickable((AppiumBy.ANDROID_UIAUTOMATOR,
-                        f'new UiSelector().resourceId("android:id/text1").text("{target_year}")'))
-                )
-                year_to_select.click()
-                year_found = True
-                break
-            except TimeoutException:
-                # Scroll backward to previous years
-                driver.find_element(
-                    AppiumBy.ANDROID_UIAUTOMATOR,
-                    'new UiScrollable(new UiSelector().resourceId("android:id/date_picker_year_picker")).scrollBackward()'
-                )
-
-        if not year_found:
-            print("Year {target_year} not found after {max_year_scrolls} scrolls")
 
         done_button = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((AppiumBy.ID, "android:id/button1"))
@@ -112,12 +85,6 @@ class BasicEndToEndTest(unittest.TestCase):
         if chatgpt_checkbox.get_attribute("checked") != "true":
             chatgpt_checkbox.click()
 
-        bard_checkbox = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((AppiumBy.ID, "com.example.aisurveyapp:id/cbBard"))
-        )
-        if bard_checkbox.get_attribute("checked") != "true":
-            bard_checkbox.click()
-
         cons_field = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((AppiumBy.ID, "com.example.aisurveyapp:id/etChatGPTCons"))
         )
@@ -132,8 +99,19 @@ class BasicEndToEndTest(unittest.TestCase):
             EC.element_to_be_clickable((AppiumBy.ID, "com.example.aisurveyapp:id/btnSend"))
         )
         self.assertTrue(send_button.is_enabled(), "Send button should be enabled")
-        send_button.click()
 
+        # --- MULTIPLE SEND CLICKS ---
+        for i in range(3):
+            send_button.click()
+            print(f"Send button clicked {i+1} times")
+            time.sleep(1)
+        error_message_element = WebDriverWait(driver, 10).until(
+            EC.visibility_of_element_located((AppiumBy.ID, "com.example.aisurveyapp:id/submitErrorMessage"))
+        )
+
+        error_message = error_message_element.text
+        self.assertTrue("You can only submit the form once" in error_message, 
+                        "Error message not displayed correctly")
         # --- EMAIL VERIFICATION VIA IMAP ---
         email_found = self.wait_for_email(
             recipient="test.hesap458@gmail.com",
@@ -144,16 +122,25 @@ class BasicEndToEndTest(unittest.TestCase):
 
     def wait_for_email(self, recipient, subject_keyword, timeout=30):
         start_time = time.time()
+        first_email_timestamp = None
+        first_email_body = None
         while (time.time() - start_time) < timeout:
-            if self.check_email(recipient, subject_keyword):
+            email_found, multiple_emails = self.check_email(
+                recipient, subject_keyword, first_email_timestamp, first_email_body
+            )
+            if email_found:
+                if multiple_emails:
+                    print("Multiple emails found with the same body content within the last 5 minutes.")
+                    return False  # Fail if multiple found
                 return True
             time.sleep(10)
         return False
 
-    def check_email(self, recipient, subject_keyword):
+    def check_email(self, recipient, subject_keyword, first_email_timestamp, first_email_body):
         host = "imap.gmail.com"
         username = "test.hesap458@gmail.com"
         password = os.getenv("MAIL_APP_PASSWORD")
+        multiple_emails = False
 
         try:
             mail = imaplib.IMAP4_SSL(host, 993)
@@ -162,29 +149,52 @@ class BasicEndToEndTest(unittest.TestCase):
             result, data = mail.search(None, f'(SUBJECT "{subject_keyword}")')
             mail_ids = data[0].split()
 
-            for mail_id in reversed(mail_ids):  # Start from the most recent
+            email_count = 0
+
+            for mail_id in reversed(mail_ids):
                 result, msg_data = mail.fetch(mail_id, "(RFC822)")
                 raw_email = msg_data[0][1]
                 msg = email.message_from_bytes(raw_email)
                 date_tuple = email.utils.parsedate_tz(msg["Date"])
-                if date_tuple:
-                    email_timestamp = datetime.fromtimestamp(email.utils.mktime_tz(date_tuple))
-                    now = datetime.now()
-                    if now - email_timestamp <= timedelta(minutes=5):
-                        print("Email found within last 5 minutes.")
-                        mail.logout()
-                        return True
+
+                email_body = self.extract_body_from_email(msg)
+
+                if email_body:
+                    # If it's the first email, save the timestamp and body content
+                    if not first_email_timestamp:
+                        first_email_timestamp = datetime.fromtimestamp(email.utils.mktime_tz(date_tuple))
+                        first_email_body = email_body
+                        email_count += 1
+
+                    # If the email body is the same as the first email and within 5 minutes, flag it as multiple
+                    elif email_body == first_email_body:
+                        email_timestamp = datetime.fromtimestamp(email.utils.mktime_tz(date_tuple))
+                        if datetime.now() - email_timestamp <= timedelta(minutes=5):
+                            multiple_emails = True
+                            break
 
             mail.logout()
-            return False
+            return email_count > 0, multiple_emails  # Return whether any email was found and if multiple were found
         except Exception as e:
             print("Error checking email:", e)
-            return False
+            return False, False
+
+    def extract_body_from_email(self, msg):
+        """Extracts the body content from the email."""
+        if msg.is_multipart():
+            for part in msg.walk():
+                if part.get_content_type() == "text/plain":
+                    body = part.get_payload(decode=True).decode()
+                    return body
+        else:
+            return msg.get_payload(decode=True).decode()
+
+        return None
 
     def tearDown(self):
         if self.driver:
             logout_button = WebDriverWait(self.driver, 10).until(
-            EC.element_to_be_clickable((AppiumBy.ID, "com.example.aisurveyapp:id/btnLogout"))
+                EC.element_to_be_clickable((AppiumBy.ID, "com.example.aisurveyapp:id/btnLogout"))
             )
             logout_button.click()
             self.driver.quit()

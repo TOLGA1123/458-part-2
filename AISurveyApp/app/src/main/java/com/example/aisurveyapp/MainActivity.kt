@@ -166,7 +166,18 @@ class MainActivity : AppCompatActivity() {
         btnSend.isEnabled = allFilled
     }
 
+    private var isSubmitted = false
+
     private fun sendSurveyData() {
+        if (isSubmitted) {
+            val submitErrorMessage: TextView = findViewById(R.id.submitErrorMessage)
+            submitErrorMessage.visibility = View.VISIBLE
+            submitErrorMessage.text = "You can only submit the form once"
+            return
+        }
+        val submitErrorMessage: TextView = findViewById(R.id.submitErrorMessage)
+        submitErrorMessage.visibility = View.GONE
+
         val selectedModels = mutableListOf<String>()
         val modelConsMap = mutableMapOf<String, String>()
         val errorMessage: TextView = findViewById(R.id.aiModelErrorMessage)
@@ -204,13 +215,14 @@ class MainActivity : AppCompatActivity() {
             model_cons = modelConsMap,
             use_case = etUseCase.text.toString()
         )
+        isSubmitted = true
 
         val api = RetrofitClient.instance.create(MainActivityService::class.java)
         api.sendSurvey(request).enqueue(object : Callback<SurveyResponse> {
             override fun onResponse(call: Call<SurveyResponse>, response: Response<SurveyResponse>) {
                 if (response.isSuccessful && response.body()?.success == true) {
                     Toast.makeText(this@MainActivity, "Survey mailed ✔", Toast.LENGTH_SHORT).show()
-                    finish()
+                    //finish()
                 } else {
                     Toast.makeText(this@MainActivity, "Send failed", Toast.LENGTH_SHORT).show()
                 }
