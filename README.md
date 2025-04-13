@@ -9,6 +9,10 @@ On one terminal run the individual tests with command: "python test#.py".
 
 ## UML Diagrams
 
+### Use Case Diagram
+
+![Use Case Diagram](./mermaid-diagrams/use-case-diagram-new.png)
+
 ### Class Diagram
 
 ![Class Diagram](./mermaid-diagrams/class-diagram-new.png)
