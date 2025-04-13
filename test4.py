@@ -12,7 +12,7 @@ import email
 import os
 from dotenv import load_dotenv
 load_dotenv()
-
+#Click send button multiple times for the same form content
 class MultipleSendTest(unittest.TestCase):
     def setUp(self):
         options = UiAutomator2Options()
@@ -110,7 +110,7 @@ class MultipleSendTest(unittest.TestCase):
         )
 
         error_message = error_message_element.text
-        self.assertTrue("You can only submit the form once" in error_message, 
+        self.assertTrue("You can only submit the same form once" in error_message, 
                         "Error message not displayed correctly")
         # --- EMAIL VERIFICATION VIA IMAP ---
         email_found = self.wait_for_email(

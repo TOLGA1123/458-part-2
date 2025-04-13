@@ -9,7 +9,7 @@ from selenium.common.exceptions import TimeoutException
 import os
 from dotenv import load_dotenv
 load_dotenv()
-
+#Click send button without selecting any model
 class SendWithoutModelTest(unittest.TestCase):
     def setUp(self):
         options = UiAutomator2Options()

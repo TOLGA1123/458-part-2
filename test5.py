@@ -12,8 +12,9 @@ import email
 import os
 from dotenv import load_dotenv
 load_dotenv()
-#End to end successful form send
-class BasicEndToEndTest(unittest.TestCase):
+
+#Click send once, then change content of the form, resend
+class SendDifferentForm(unittest.TestCase):
     def setUp(self):
         options = UiAutomator2Options()
         options.platform_name = "Android"
@@ -26,7 +27,7 @@ class BasicEndToEndTest(unittest.TestCase):
         self.driver = webdriver.Remote("http://localhost:4723", options=options)
         self.driver.implicitly_wait(10)
 
-    def test_basic_end_to_end_submission(self):
+    def test_basic_end_to_end_submission_different_sends(self):
         driver = self.driver
 
          # --- LOGIN PHASE ---
@@ -49,40 +50,12 @@ class BasicEndToEndTest(unittest.TestCase):
         name_field = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((AppiumBy.ID, "com.example.aisurveyapp:id/etName"))
         )
-        name_field.send_keys("Jane Doe")
+        name_field.send_keys("Test1")
 
         birth_date_field = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((AppiumBy.ID, "com.example.aisurveyapp:id/etBirthDate"))
         )
         birth_date_field.click()
-
-        year_header = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((AppiumBy.ID, "android:id/date_picker_header_year"))
-        )
-        year_header.click()
-
-        target_year = "2015"
-        max_year_scrolls = 20
-
-        year_found = False
-        for _ in range(max_year_scrolls):
-            try:
-                year_to_select = WebDriverWait(driver, 2).until(
-                    EC.element_to_be_clickable((AppiumBy.ANDROID_UIAUTOMATOR,
-                        f'new UiSelector().resourceId("android:id/text1").text("{target_year}")'))
-                )
-                year_to_select.click()
-                year_found = True
-                break
-            except TimeoutException:
-                # Scroll backward to previous years
-                driver.find_element(
-                    AppiumBy.ANDROID_UIAUTOMATOR,
-                    'new UiScrollable(new UiSelector().resourceId("android:id/date_picker_year_picker")).scrollBackward()'
-                )
-
-        if not year_found:
-            print("Year {target_year} not found after {max_year_scrolls} scrolls")
 
         done_button = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((AppiumBy.ID, "android:id/button1"))
@@ -113,12 +86,6 @@ class BasicEndToEndTest(unittest.TestCase):
         if chatgpt_checkbox.get_attribute("checked") != "true":
             chatgpt_checkbox.click()
 
-        bard_checkbox = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((AppiumBy.ID, "com.example.aisurveyapp:id/cbBard"))
-        )
-        if bard_checkbox.get_attribute("checked") != "true":
-            bard_checkbox.click()
-
         cons_field = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((AppiumBy.ID, "com.example.aisurveyapp:id/etChatGPTCons"))
         )
@@ -134,6 +101,35 @@ class BasicEndToEndTest(unittest.TestCase):
         )
         self.assertTrue(send_button.is_enabled(), "Send button should be enabled")
         send_button.click()
+        
+        # Try to send 2 times same form
+        for i in range(2):
+            send_button.click()
+            print(f"Send button clicked {i+1} times")
+            time.sleep(1)
+        error_message_element = WebDriverWait(driver, 10).until(
+            EC.visibility_of_element_located((AppiumBy.ID, "com.example.aisurveyapp:id/submitErrorMessage"))
+        )
+
+        error_message = error_message_element.text
+        self.assertTrue("You can only submit the same form once" in error_message, 
+                        "Error message not displayed correctly")
+        
+        #Change name and usecase field and send again 
+        name_field = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((AppiumBy.ID, "com.example.aisurveyapp:id/etName"))
+        )
+        name_field.send_keys("Test2")
+        use_case_field = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((AppiumBy.ID, "com.example.aisurveyapp:id/etUseCase"))
+        )
+        use_case_field.send_keys("I Hate AI")
+        send_button = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((AppiumBy.ID, "com.example.aisurveyapp:id/btnSend"))
+        )
+        self.assertTrue(send_button.is_enabled(), "Send button should be enabled")
+        send_button.click()
+
 
         # --- EMAIL VERIFICATION VIA IMAP ---
         email_found = self.wait_for_email(
@@ -146,7 +142,8 @@ class BasicEndToEndTest(unittest.TestCase):
     def wait_for_email(self, recipient, subject_keyword, timeout=30):
         start_time = time.time()
         while (time.time() - start_time) < timeout:
-            if self.check_email(recipient, subject_keyword):
+            found_names = self.check_email(recipient, subject_keyword)
+            if "Test1" in found_names and "Test2" in found_names:
                 return True
             time.sleep(10)
         return False
@@ -155,6 +152,7 @@ class BasicEndToEndTest(unittest.TestCase):
         host = "imap.gmail.com"
         username = "test.hesap458@gmail.com"
         password = os.getenv("MAIL_APP_PASSWORD")
+        found_names = set()
 
         try:
             mail = imaplib.IMAP4_SSL(host, 993)
@@ -163,29 +161,51 @@ class BasicEndToEndTest(unittest.TestCase):
             result, data = mail.search(None, f'(SUBJECT "{subject_keyword}")')
             mail_ids = data[0].split()
 
-            for mail_id in reversed(mail_ids):  # Start from the most recent
+            for mail_id in reversed(mail_ids):  # Newest to oldest
                 result, msg_data = mail.fetch(mail_id, "(RFC822)")
                 raw_email = msg_data[0][1]
                 msg = email.message_from_bytes(raw_email)
                 date_tuple = email.utils.parsedate_tz(msg["Date"])
-                if date_tuple:
-                    email_timestamp = datetime.fromtimestamp(email.utils.mktime_tz(date_tuple))
-                    now = datetime.now()
-                    if now - email_timestamp <= timedelta(minutes=5):
-                        print("Email found within last 5 minutes.")
-                        mail.logout()
-                        return True
+                email_timestamp = datetime.fromtimestamp(email.utils.mktime_tz(date_tuple))
+
+                # Check timestamp within 5 minutes
+                if datetime.now() - email_timestamp > timedelta(minutes=5):
+                    continue
+
+                body = self.extract_body_from_email(msg)
+                if not body:
+                    continue
+
+                if "Name: Test1" in body:
+                    found_names.add("Test1")
+                if "Name: Test2" in body:
+                    found_names.add("Test2")
+
+                if found_names == {"Test1", "Test2"}:
+                    break
 
             mail.logout()
-            return False
+            return found_names
         except Exception as e:
             print("Error checking email:", e)
-            return False
+            return set()
+
+    def extract_body_from_email(self, msg):
+        """Extracts the body content from the email."""
+        if msg.is_multipart():
+            for part in msg.walk():
+                if part.get_content_type() == "text/plain":
+                    body = part.get_payload(decode=True).decode()
+                    return body
+        else:
+            return msg.get_payload(decode=True).decode()
+
+        return None
 
     def tearDown(self):
         if self.driver:
             logout_button = WebDriverWait(self.driver, 10).until(
-            EC.element_to_be_clickable((AppiumBy.ID, "com.example.aisurveyapp:id/btnLogout"))
+                EC.element_to_be_clickable((AppiumBy.ID, "com.example.aisurveyapp:id/btnLogout"))
             )
             logout_button.click()
             self.driver.quit()

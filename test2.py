@@ -10,7 +10,7 @@ from selenium.common.exceptions import TimeoutException
 import os
 from dotenv import load_dotenv
 load_dotenv()
-
+#Select a date > today as birthday
 class BirthdateValidationTest(unittest.TestCase):
     def setUp(self):
         options = UiAutomator2Options()

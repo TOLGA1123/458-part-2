@@ -36,6 +36,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var etBardCons: EditText
     private lateinit var etClaudeCons: EditText
     private lateinit var etCopilotCons: EditText
+    private var lastSubmittedRequest: SurveyRequest? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -169,18 +170,13 @@ class MainActivity : AppCompatActivity() {
     private var isSubmitted = false
 
     private fun sendSurveyData() {
-        if (isSubmitted) {
-            val submitErrorMessage: TextView = findViewById(R.id.submitErrorMessage)
-            submitErrorMessage.visibility = View.VISIBLE
-            submitErrorMessage.text = "You can only submit the form once"
-            return
-        }
         val submitErrorMessage: TextView = findViewById(R.id.submitErrorMessage)
-        submitErrorMessage.visibility = View.GONE
 
+        // Build current request
         val selectedModels = mutableListOf<String>()
         val modelConsMap = mutableMapOf<String, String>()
         val errorMessage: TextView = findViewById(R.id.aiModelErrorMessage)
+
         if (cbChatGPT.isChecked) {
             selectedModels.add(cbChatGPT.text.toString())
             modelConsMap["ChatGPT"] = etChatGPTCons.text.toString()
@@ -197,6 +193,7 @@ class MainActivity : AppCompatActivity() {
             selectedModels.add(cbCopilot.text.toString())
             modelConsMap["Copilot"] = etCopilotCons.text.toString()
         }
+
         if (selectedModels.isEmpty()) {
             errorMessage.visibility = View.VISIBLE
             btnSend.isEnabled = false
@@ -205,7 +202,8 @@ class MainActivity : AppCompatActivity() {
             errorMessage.visibility = View.GONE
             btnSend.isEnabled = true
         }
-        val request = SurveyRequest(
+
+        val currentRequest = SurveyRequest(
             name = etName.text.toString(),
             birth_date = etBirthDate.text.toString(),
             education_level = spinnerEducation.selectedItem.toString(),
@@ -215,14 +213,22 @@ class MainActivity : AppCompatActivity() {
             model_cons = modelConsMap,
             use_case = etUseCase.text.toString()
         )
+
+        if (isSubmitted && currentRequest == lastSubmittedRequest) {
+            submitErrorMessage.visibility = View.VISIBLE
+            submitErrorMessage.text = "You can only submit the same form once"
+            return
+        }
+
+        submitErrorMessage.visibility = View.GONE
+        lastSubmittedRequest = currentRequest
         isSubmitted = true
 
         val api = RetrofitClient.instance.create(MainActivityService::class.java)
-        api.sendSurvey(request).enqueue(object : Callback<SurveyResponse> {
+        api.sendSurvey(currentRequest).enqueue(object : Callback<SurveyResponse> {
             override fun onResponse(call: Call<SurveyResponse>, response: Response<SurveyResponse>) {
                 if (response.isSuccessful && response.body()?.success == true) {
                     Toast.makeText(this@MainActivity, "Survey mailed ✔", Toast.LENGTH_SHORT).show()
-                    //finish()
                 } else {
                     Toast.makeText(this@MainActivity, "Send failed", Toast.LENGTH_SHORT).show()
                 }
